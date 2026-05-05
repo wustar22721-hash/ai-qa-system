@@ -205,14 +205,7 @@ npm run dev
 
 ## 📸 效果展示
 
-> *（截图待补充）*
-
-<!--
-| 问答场景 | 截图 |
-|----------|------|
-| 知识库问答 | ![](docs/screenshots/chat.png) |
-| 来源追溯 | ![](docs/screenshots/sources.png) |
--->
+![效果展示](效果展示图.jpg)
 
 ---
 
