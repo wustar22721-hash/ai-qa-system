@@ -4,7 +4,7 @@
 
 典型场景：企业内部知识库、产品帮助中心、客服辅助系统。当前以飞书全系产品文档为示例，一键检索 439 篇官方帮助文档，答案可追溯到原文。
 
-> **技术栈**：Vue 3 · FastAPI · ChromaDB · BGE Embedding · DeepSeek-v4
+> **技术栈**：Vue 3 · FastAPI · LangChain · ChromaDB · BGE · DeepSeek-v4
 
 ---
 
@@ -24,15 +24,18 @@
 │                  Backend (FastAPI)                       │
 │                   localhost:8000                         │
 │                                                         │
-│   ┌──────────┐  ┌──────────┐  ┌──────────────────┐     │
-│   │  API 层  │  │ 模型定义 │  │    服务层 (RAG)   │     │
-│   │  /chat   │  │ schemas  │  │  loader → cleaner │     │
-│   │  /health │  │          │  │    ↓              │     │
-│   └──────────┘  └──────────┘  │  splitter → embed │     │
-│                                │    ↓              │     │
-│                                │  vectorstore →    │     │
-│                                │  reranker → llm   │     │
-│                                └──────────────────┘     │
+│   ┌──────────┐  ┌──────────┐  ┌──────────────────────┐ │
+│   │  API 层  │  │ 模型定义 │  │    服务层 (RAG)       │ │
+│   │  /chat   │  │ schemas  │  │  loader → cleaner     │ │
+│   │  /health │  │          │  │    ↓                  │ │
+│   └──────────┘  └──────────┘  │  splitter ← LangChain │ │
+│                                │    ↓                  │ │
+│                                │  embedding ←LangChain │ │
+│                                │    ↓                  │ │
+│                                │  vectorstore←LangChain│ │
+│                                │    ↓                  │ │
+│                                │  reranker → llm       │ │
+│                                └──────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
      │                    │                    │
      ▼                    ▼                    ▼
@@ -139,9 +142,9 @@ kbqa/
 │   └── services/
 │       ├── loader.py             # 递归加载 Markdown 知识文件
 │       ├── cleaner.py            # 文本清洗（去图片/链接/时间戳）
-│       ├── splitter.py           # LangChain 文本切片
-│       ├── embedding.py          # BGE 中文嵌入模型
-│       ├── vectorstore.py        # ChromaDB 向量库构建/检索
+│       ├── splitter.py           # 文本切片 (LangChain)
+│       ├── embedding.py          # BGE 嵌入模型 (LangChain 封装)
+│       ├── vectorstore.py        # ChromaDB 向量库 (LangChain 集成)
 │       ├── reranker.py           # 混合重排序（向量 + 关键词）
 │       ├── llm.py                # DeepSeek LLM 调用
 │       └── rag.py                # RAG 全流程编排
@@ -271,6 +274,7 @@ npm run dev
 ### 工程角度
 
 - **模块化管道架构**：将 RAG 拆解为 loader → cleaner → splitter → embed → vectorstore → reranker → llm 七个独立服务，各环节可单独替换或复用。例如把 BGE 换成其他嵌入模型、DeepSeek 换成 OpenAI，只需修改对应模块，不影响其余链路。
+- **LangChain 作为组件库而非框架**：仅在文本切片（`RecursiveCharacterTextSplitter`）、嵌入封装（`HuggingFaceEmbeddings`）、向量库集成（`Chroma`）三处使用 LangChain 的成熟组件。重排序、清洗、RAG 编排等业务逻辑全部手写，避免了"用了框架但不知道为什么能跑"的问题。
 - **无 GPU 可运行**：BGE-small-zh 在 CPU 上完成推理，重排序采用自定义算法替代交叉编码器模型，省去 GPU 依赖，普通笔记本即可跑通全链路。
 - **感知式启动策略**：首次运行自动构建向量库并持久化到磁盘，后续启动检测到已有索引则跳过构建直接加载，冷启动时间从数分钟降至 5-10 秒。
 - **前后端分离 + 代理开发**：Vue 3 + FastAPI 独立部署，Vite 开发服务器将 `/api/*` 请求代理至后端，开发期零跨域成本。
