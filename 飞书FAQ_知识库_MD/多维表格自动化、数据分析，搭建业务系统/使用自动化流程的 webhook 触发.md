@@ -1,0 +1,195 @@
+# 使用自动化流程的 webhook 触发
+
+原文链接：https://www.feishu.cn/hc/zh-CN/articles/612376356355
+
+## 正文
+
+本功能适用[版本说明](https://www.feishu.cn/service)
+
+基础版
+
+免费
+
+商业版
+
+标准
+
+专业
+
+![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAFTUlEQVRogeWaS2xUVRzGf99pqxBaL2HdjdaI++l0AGOciC4kpsEYFhahAUxITHx0SoAmxExIiJTgDCHRSAwgCaKygRQkPDR2oSh0ZmFcGAwPoywMC8JNIZBM5/5d9GE73GnvTGco6Leae/+P831zXvc8RI0Q22KeRliBsdSMxYKnMTwTLQAyhhG+wWWJS4ifrJFT+X75tShfswlObLbWoECnGSsNkkBThSkKgkGJ466JgQu7dL1aLlUJSWy21mKB7QbdGK7awkuYBIJDDU18UI2gioQk07bwjs9Wg3fNmF9pYZEIibuCvQs8dg6mdStyXFTH9pR1Yhw0Y1F1FCuDxE3EulxGA1H8IzWLeMr6zDj2oEQAmLHIjGPxlPVF8Z+2RpJpmzfssx+jqzb0qoQ40uKxYTCte+VdyiCZtnm3fb4zY1l92FUGifPNHsvLiSnbtIZ99j8sIgDMWDbss7+cPVRIPGV9c96cwmB0lesz9zWt9pR1mnGsZvNDrSECiddKR7MpQpJpW3jb58qDHJ2qgcTNZo+2yfPMlH/9js/Wh10EjA7Nd3y2Tn43USNjnx2/12vGrjUk7jY08cz458xEjRQLbH9URACYMb9YYPv4s4PR2jDonjtaoxB87RzPOZFEnJ3J36A7sdlaARoBggKdcz1KybEtl9GO8efYPjuv3/jVYHHZIMMFBTqBTxyAGSvrT3UaiL7JIgDyG1UAvpkpdJy7i20xb2xRNCeQ2JzPameYzUTrTPEGydgW8xo1wgqrfGVXE0ikclllw2zxHnshMFZFSNOkEVY4gjn6nnK8V05ExyZbanCCqOslY2kjNk1nqg9M8E4uo4/DjB2bbGlQ5IzZ6KZFJAQ86xBtFRL5AfG9oFhhHIAh3s7tmUbECKcrEgEg2hyGF82XohMv5/fo+XxWLzpHDPizguLMOTbms/o0zJhI2ZJghNMGT1SQcywznhvfd5qZBV8NZfXt+PPFjH5paCRJFDEikOOtoYw+CzMnUrakGHCmKhGAiZbIk6CMG6XvLu7WtYZGkhJ/lQ8kANbnMjoQZo5tssRsRIzDyRiO6Lvylb32eOnLi7t1TYSLGWuO3fmsDoUljG2yBMXZi5Ax7BCRtizNePLGNQ6sOmoNpbahrK6WihEUaWDNUEaHw/K191gHRc5E7aPTQvgO40rkAKPr6s8cSqftviY5IQauS4xIdOU+0pdhadp7rMPgbE1EAAaXHeJSRVEBq0/65cVYE0nE60NZHQ0Lj/davJYiACQuqb3X3rAiR6oIPvyqR3c6rSBqTLzX4kHAuVqKAFADXc4aOQUUKg02482TPp+H1UwYOnqsPSjWtibGULBGTrl8v3zBYDUZzFhz8hYHZxLT0WPtReMcsLCacqaDYDDfL98BSByvNpHB2unEJHotVi8R8C93B+CaGBibuKqCwdoTPgdKxSR6LTYS1E8EInBNDIz+HEN7jx0wY90sEx/jMd5/aj5//+GzMjD2US8RgMTBXFbrR4seQ023g0RQ7z2AsttBF3bpumBvTUp5ABsZgr2Tj+imFLjAY6fEzXqTmC0kbi7wmLLOnyJkMK1biHWz6fh1hwgQ60rPF+9rArmMBpzY9uCYVQYntoWdK5Zd3Md67IuH7oxEHMlntTrMVLZTtnhskDhfP1aVQeLHFo8N5exlhQymda/ZYzmq/IOy5hBHmj1equowdDLiKesLAnZE9a8ZRODEtqGMPpzZNSL+ExcGYHQ0a/Zoc6Jf4m71FKeHxF0n+ps92qKKgP/rpZpSPPLXnMIwcfEsYBnGYkRb2MUzjCuISzjO1/Li2T9QWD8sZUQiLQAAAABJRU5ErkJggg==)
+
+旗舰
+
+![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAFTUlEQVRogeWaS2xUVRzGf99pqxBaL2HdjdaI++l0AGOciC4kpsEYFhahAUxITHx0SoAmxExIiJTgDCHRSAwgCaKygRQkPDR2oSh0ZmFcGAwPoywMC8JNIZBM5/5d9GE73GnvTGco6Leae/+P831zXvc8RI0Q22KeRliBsdSMxYKnMTwTLQAyhhG+wWWJS4ifrJFT+X75tShfswlObLbWoECnGSsNkkBThSkKgkGJ466JgQu7dL1aLlUJSWy21mKB7QbdGK7awkuYBIJDDU18UI2gioQk07bwjs9Wg3fNmF9pYZEIibuCvQs8dg6mdStyXFTH9pR1Yhw0Y1F1FCuDxE3EulxGA1H8IzWLeMr6zDj2oEQAmLHIjGPxlPVF8Z+2RpJpmzfssx+jqzb0qoQ40uKxYTCte+VdyiCZtnm3fb4zY1l92FUGifPNHsvLiSnbtIZ99j8sIgDMWDbss7+cPVRIPGV9c96cwmB0lesz9zWt9pR1mnGsZvNDrSECiddKR7MpQpJpW3jb58qDHJ2qgcTNZo+2yfPMlH/9js/Wh10EjA7Nd3y2Tn43USNjnx2/12vGrjUk7jY08cz458xEjRQLbH9URACYMb9YYPv4s4PR2jDonjtaoxB87RzPOZFEnJ3J36A7sdlaARoBggKdcz1KybEtl9GO8efYPjuv3/jVYHHZIMMFBTqBTxyAGSvrT3UaiL7JIgDyG1UAvpkpdJy7i20xb2xRNCeQ2JzPameYzUTrTPEGydgW8xo1wgqrfGVXE0ikclllw2zxHnshMFZFSNOkEVY4gjn6nnK8V05ExyZbanCCqOslY2kjNk1nqg9M8E4uo4/DjB2bbGlQ5IzZ6KZFJAQ86xBtFRL5AfG9oFhhHIAh3s7tmUbECKcrEgEg2hyGF82XohMv5/fo+XxWLzpHDPizguLMOTbms/o0zJhI2ZJghNMGT1SQcywznhvfd5qZBV8NZfXt+PPFjH5paCRJFDEikOOtoYw+CzMnUrakGHCmKhGAiZbIk6CMG6XvLu7WtYZGkhJ/lQ8kANbnMjoQZo5tssRsRIzDyRiO6Lvylb32eOnLi7t1TYSLGWuO3fmsDoUljG2yBMXZi5Ax7BCRtizNePLGNQ6sOmoNpbahrK6WihEUaWDNUEaHw/K191gHRc5E7aPTQvgO40rkAKPr6s8cSqftviY5IQauS4xIdOU+0pdhadp7rMPgbE1EAAaXHeJSRVEBq0/65cVYE0nE60NZHQ0Lj/davJYiACQuqb3X3rAiR6oIPvyqR3c6rSBqTLzX4kHAuVqKAFADXc4aOQUUKg02482TPp+H1UwYOnqsPSjWtibGULBGTrl8v3zBYDUZzFhz8hYHZxLT0WPtReMcsLCacqaDYDDfL98BSByvNpHB2unEJHotVi8R8C93B+CaGBibuKqCwdoTPgdKxSR6LTYS1E8EInBNDIz+HEN7jx0wY90sEx/jMd5/aj5//+GzMjD2US8RgMTBXFbrR4seQ023g0RQ7z2AsttBF3bpumBvTUp5ABsZgr2Tj+imFLjAY6fEzXqTmC0kbi7wmLLOnyJkMK1biHWz6fh1hwgQ60rPF+9rArmMBpzY9uCYVQYntoWdK5Zd3Md67IuH7oxEHMlntTrMVLZTtnhskDhfP1aVQeLHFo8N5exlhQymda/ZYzmq/IOy5hBHmj1equowdDLiKesLAnZE9a8ZRODEtqGMPpzZNSL+ExcGYHQ0a/Zoc6Jf4m71FKeHxF0n+ps92qKKgP/rpZpSPPLXnMIwcfEsYBnGYkRb2MUzjCuISzjO1/Li2T9QWD8sZUQiLQAAAABJRU5ErkJggg==)
+
+企业版
+
+标准
+
+![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAFTUlEQVRogeWaS2xUVRzGf99pqxBaL2HdjdaI++l0AGOciC4kpsEYFhahAUxITHx0SoAmxExIiJTgDCHRSAwgCaKygRQkPDR2oSh0ZmFcGAwPoywMC8JNIZBM5/5d9GE73GnvTGco6Leae/+P831zXvc8RI0Q22KeRliBsdSMxYKnMTwTLQAyhhG+wWWJS4ifrJFT+X75tShfswlObLbWoECnGSsNkkBThSkKgkGJ466JgQu7dL1aLlUJSWy21mKB7QbdGK7awkuYBIJDDU18UI2gioQk07bwjs9Wg3fNmF9pYZEIibuCvQs8dg6mdStyXFTH9pR1Yhw0Y1F1FCuDxE3EulxGA1H8IzWLeMr6zDj2oEQAmLHIjGPxlPVF8Z+2RpJpmzfssx+jqzb0qoQ40uKxYTCte+VdyiCZtnm3fb4zY1l92FUGifPNHsvLiSnbtIZ99j8sIgDMWDbss7+cPVRIPGV9c96cwmB0lesz9zWt9pR1mnGsZvNDrSECiddKR7MpQpJpW3jb58qDHJ2qgcTNZo+2yfPMlH/9js/Wh10EjA7Nd3y2Tn43USNjnx2/12vGrjUk7jY08cz458xEjRQLbH9URACYMb9YYPv4s4PR2jDonjtaoxB87RzPOZFEnJ3J36A7sdlaARoBggKdcz1KybEtl9GO8efYPjuv3/jVYHHZIMMFBTqBTxyAGSvrT3UaiL7JIgDyG1UAvpkpdJy7i20xb2xRNCeQ2JzPameYzUTrTPEGydgW8xo1wgqrfGVXE0ikclllw2zxHnshMFZFSNOkEVY4gjn6nnK8V05ExyZbanCCqOslY2kjNk1nqg9M8E4uo4/DjB2bbGlQ5IzZ6KZFJAQ86xBtFRL5AfG9oFhhHIAh3s7tmUbECKcrEgEg2hyGF82XohMv5/fo+XxWLzpHDPizguLMOTbms/o0zJhI2ZJghNMGT1SQcywznhvfd5qZBV8NZfXt+PPFjH5paCRJFDEikOOtoYw+CzMnUrakGHCmKhGAiZbIk6CMG6XvLu7WtYZGkhJ/lQ8kANbnMjoQZo5tssRsRIzDyRiO6Lvylb32eOnLi7t1TYSLGWuO3fmsDoUljG2yBMXZi5Ax7BCRtizNePLGNQ6sOmoNpbahrK6WihEUaWDNUEaHw/K191gHRc5E7aPTQvgO40rkAKPr6s8cSqftviY5IQauS4xIdOU+0pdhadp7rMPgbE1EAAaXHeJSRVEBq0/65cVYE0nE60NZHQ0Lj/davJYiACQuqb3X3rAiR6oIPvyqR3c6rSBqTLzX4kHAuVqKAFADXc4aOQUUKg02482TPp+H1UwYOnqsPSjWtibGULBGTrl8v3zBYDUZzFhz8hYHZxLT0WPtReMcsLCacqaDYDDfL98BSByvNpHB2unEJHotVi8R8C93B+CaGBibuKqCwdoTPgdKxSR6LTYS1E8EInBNDIz+HEN7jx0wY90sEx/jMd5/aj5//+GzMjD2US8RgMTBXFbrR4seQ023g0RQ7z2AsttBF3bpumBvTUp5ABsZgr2Tj+imFLjAY6fEzXqTmC0kbi7wmLLOnyJkMK1biHWz6fh1hwgQ60rPF+9rArmMBpzY9uCYVQYntoWdK5Zd3Md67IuH7oxEHMlntTrMVLZTtnhskDhfP1aVQeLHFo8N5exlhQymda/ZYzmq/IOy5hBHmj1equowdDLiKesLAnZE9a8ZRODEtqGMPpzZNSL+ExcGYHQ0a/Zoc6Jf4m71FKeHxF0n+ps92qKKgP/rpZpSPPLXnMIwcfEsYBnGYkRb2MUzjCuISzjO1/Li2T9QWD8sZUQiLQAAAABJRU5ErkJggg==)
+
+专业
+
+![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAFTUlEQVRogeWaS2xUVRzGf99pqxBaL2HdjdaI++l0AGOciC4kpsEYFhahAUxITHx0SoAmxExIiJTgDCHRSAwgCaKygRQkPDR2oSh0ZmFcGAwPoywMC8JNIZBM5/5d9GE73GnvTGco6Leae/+P831zXvc8RI0Q22KeRliBsdSMxYKnMTwTLQAyhhG+wWWJS4ifrJFT+X75tShfswlObLbWoECnGSsNkkBThSkKgkGJ466JgQu7dL1aLlUJSWy21mKB7QbdGK7awkuYBIJDDU18UI2gioQk07bwjs9Wg3fNmF9pYZEIibuCvQs8dg6mdStyXFTH9pR1Yhw0Y1F1FCuDxE3EulxGA1H8IzWLeMr6zDj2oEQAmLHIjGPxlPVF8Z+2RpJpmzfssx+jqzb0qoQ40uKxYTCte+VdyiCZtnm3fb4zY1l92FUGifPNHsvLiSnbtIZ99j8sIgDMWDbss7+cPVRIPGV9c96cwmB0lesz9zWt9pR1mnGsZvNDrSECiddKR7MpQpJpW3jb58qDHJ2qgcTNZo+2yfPMlH/9js/Wh10EjA7Nd3y2Tn43USNjnx2/12vGrjUk7jY08cz458xEjRQLbH9URACYMb9YYPv4s4PR2jDonjtaoxB87RzPOZFEnJ3J36A7sdlaARoBggKdcz1KybEtl9GO8efYPjuv3/jVYHHZIMMFBTqBTxyAGSvrT3UaiL7JIgDyG1UAvpkpdJy7i20xb2xRNCeQ2JzPameYzUTrTPEGydgW8xo1wgqrfGVXE0ikclllw2zxHnshMFZFSNOkEVY4gjn6nnK8V05ExyZbanCCqOslY2kjNk1nqg9M8E4uo4/DjB2bbGlQ5IzZ6KZFJAQ86xBtFRL5AfG9oFhhHIAh3s7tmUbECKcrEgEg2hyGF82XohMv5/fo+XxWLzpHDPizguLMOTbms/o0zJhI2ZJghNMGT1SQcywznhvfd5qZBV8NZfXt+PPFjH5paCRJFDEikOOtoYw+CzMnUrakGHCmKhGAiZbIk6CMG6XvLu7WtYZGkhJ/lQ8kANbnMjoQZo5tssRsRIzDyRiO6Lvylb32eOnLi7t1TYSLGWuO3fmsDoUljG2yBMXZi5Ax7BCRtizNePLGNQ6sOmoNpbahrK6WihEUaWDNUEaHw/K191gHRc5E7aPTQvgO40rkAKPr6s8cSqftviY5IQauS4xIdOU+0pdhadp7rMPgbE1EAAaXHeJSRVEBq0/65cVYE0nE60NZHQ0Lj/davJYiACQuqb3X3rAiR6oIPvyqR3c6rSBqTLzX4kHAuVqKAFADXc4aOQUUKg02482TPp+H1UwYOnqsPSjWtibGULBGTrl8v3zBYDUZzFhz8hYHZxLT0WPtReMcsLCacqaDYDDfL98BSByvNpHB2unEJHotVi8R8C93B+CaGBibuKqCwdoTPgdKxSR6LTYS1E8EInBNDIz+HEN7jx0wY90sEx/jMd5/aj5//+GzMjD2US8RgMTBXFbrR4seQ023g0RQ7z2AsttBF3bpumBvTUp5ABsZgr2Tj+imFLjAY6fEzXqTmC0kbi7wmLLOnyJkMK1biHWz6fh1hwgQ60rPF+9rArmMBpzY9uCYVQYntoWdK5Zd3Md67IuH7oxEHMlntTrMVLZTtnhskDhfP1aVQeLHFo8N5exlhQymda/ZYzmq/IOy5hBHmj1equowdDLiKesLAnZE9a8ZRODEtqGMPpzZNSL+ExcGYHQ0a/Zoc6Jf4m71FKeHxF0n+ps92qKKgP/rpZpSPPLXnMIwcfEsYBnGYkRb2MUzjCuISzjO1/Li2T9QWD8sZUQiLQAAAABJRU5ErkJggg==)
+
+旗舰
+
+![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAFTUlEQVRogeWaS2xUVRzGf99pqxBaL2HdjdaI++l0AGOciC4kpsEYFhahAUxITHx0SoAmxExIiJTgDCHRSAwgCaKygRQkPDR2oSh0ZmFcGAwPoywMC8JNIZBM5/5d9GE73GnvTGco6Leae/+P831zXvc8RI0Q22KeRliBsdSMxYKnMTwTLQAyhhG+wWWJS4ifrJFT+X75tShfswlObLbWoECnGSsNkkBThSkKgkGJ466JgQu7dL1aLlUJSWy21mKB7QbdGK7awkuYBIJDDU18UI2gioQk07bwjs9Wg3fNmF9pYZEIibuCvQs8dg6mdStyXFTH9pR1Yhw0Y1F1FCuDxE3EulxGA1H8IzWLeMr6zDj2oEQAmLHIjGPxlPVF8Z+2RpJpmzfssx+jqzb0qoQ40uKxYTCte+VdyiCZtnm3fb4zY1l92FUGifPNHsvLiSnbtIZ99j8sIgDMWDbss7+cPVRIPGV9c96cwmB0lesz9zWt9pR1mnGsZvNDrSECiddKR7MpQpJpW3jb58qDHJ2qgcTNZo+2yfPMlH/9js/Wh10EjA7Nd3y2Tn43USNjnx2/12vGrjUk7jY08cz458xEjRQLbH9URACYMb9YYPv4s4PR2jDonjtaoxB87RzPOZFEnJ3J36A7sdlaARoBggKdcz1KybEtl9GO8efYPjuv3/jVYHHZIMMFBTqBTxyAGSvrT3UaiL7JIgDyG1UAvpkpdJy7i20xb2xRNCeQ2JzPameYzUTrTPEGydgW8xo1wgqrfGVXE0ikclllw2zxHnshMFZFSNOkEVY4gjn6nnK8V05ExyZbanCCqOslY2kjNk1nqg9M8E4uo4/DjB2bbGlQ5IzZ6KZFJAQ86xBtFRL5AfG9oFhhHIAh3s7tmUbECKcrEgEg2hyGF82XohMv5/fo+XxWLzpHDPizguLMOTbms/o0zJhI2ZJghNMGT1SQcywznhvfd5qZBV8NZfXt+PPFjH5paCRJFDEikOOtoYw+CzMnUrakGHCmKhGAiZbIk6CMG6XvLu7WtYZGkhJ/lQ8kANbnMjoQZo5tssRsRIzDyRiO6Lvylb32eOnLi7t1TYSLGWuO3fmsDoUljG2yBMXZi5Ax7BCRtizNePLGNQ6sOmoNpbahrK6WihEUaWDNUEaHw/K191gHRc5E7aPTQvgO40rkAKPr6s8cSqftviY5IQauS4xIdOU+0pdhadp7rMPgbE1EAAaXHeJSRVEBq0/65cVYE0nE60NZHQ0Lj/davJYiACQuqb3X3rAiR6oIPvyqR3c6rSBqTLzX4kHAuVqKAFADXc4aOQUUKg02482TPp+H1UwYOnqsPSjWtibGULBGTrl8v3zBYDUZzFhz8hYHZxLT0WPtReMcsLCacqaDYDDfL98BSByvNpHB2unEJHotVi8R8C93B+CaGBibuKqCwdoTPgdKxSR6LTYS1E8EInBNDIz+HEN7jx0wY90sEx/jMd5/aj5//+GzMjD2US8RgMTBXFbrR4seQ023g0RQ7z2AsttBF3bpumBvTUp5ABsZgr2Tj+imFLjAY6fEzXqTmC0kbi7wmLLOnyJkMK1biHWz6fh1hwgQ60rPF+9rArmMBpzY9uCYVQYntoWdK5Zd3Md67IuH7oxEHMlntTrMVLZTtnhskDhfP1aVQeLHFo8N5exlhQymda/ZYzmq/IOy5hBHmj1equowdDLiKesLAnZE9a8ZRODEtqGMPpzZNSL+ExcGYHQ0a/Zoc6Jf4m71FKeHxF0n+ps92qKKgP/rpZpSPPLXnMIwcfEsYBnGYkRb2MUzjCuISzjO1/Li2T9QWD8sZUQiLQAAAABJRU5ErkJggg==)
+
+如需咨询或升级版本，请[联系客服](https://applink.feishu.cn/client/web_url/open?width=640&height=480&mode=window&url=https%3A%2F%2Flinkchat.feishu.cn%2Fim-linkchat%2Fredirect.html%3Fsource%3D5%26channelId%3D45)。
+
+一、功能简介​
+
+多维表格自动化流程支持以“接收到 webhook 时”作为触发条件，内外部系统均可以通过 webhook 触发来调用自动化。Webhook 触发拓展了自动化流程的使用场景，可将外部系统与多维表格的数据进一步打通。​
+
+注：此功能较为复杂，可能需要具备一定的代码能力和多维表格搭建能力才能完整使用。​
+
+信息流转的过程如下：外部系统发生变更后，发送 HTTP 请求（需使用 POST 请求）至多维表格自动化流程。多维表格自动化流程接收到这个信息后，进一步触发相应的自动化操作。​
+
+​
+
+250px|700px|reset
+
+![](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/304a53beb8714bd99965e4c20b1761bf~tplv-jbbdkfciu3-image:0:0.image)​​
+
+如果我们将这个信息传递的过程比喻为“打电话”，那么外部系统是“打电话”方，多维表格是“接电话”方。因此，从操作顺序上，你需要：​
+
+  1. 获取 webhook 地址：webhook 地址相当于是“接电话方的电话号码”，由多维表格提供。每个 webhook 触发的自动化流程，都会对应一个唯一的 webhook 地址。​
+
+
+
+  2. 在触发侧配置请求 URL 并写好 HTTP 请求，也就是你想要传递的信息。​
+
+
+
+  3. 在多维表格中设置自动化流程，选择触发条件为“接收到 webhook 时”，并按需选择你想要执行的自动化操作。​
+
+
+
+常见使用场景：​
+
+  * 外部系统与多维表格联动：例如，在一个项目管理软件中，如果某一条需求的状态发生变更，发送请求到多维表格并触发自动化，自动给相关人员发送飞书消息通知。​
+
+
+
+  * 跨多维表格联动：实现跨多维表格的自动化调用。例如，当“客户信息”多维表格中的信息发生变更，发送 HTTP 请求到“订单信息”的多维表格，自动在“订单信息”多维表格中新增一条记录。​
+
+
+
+  * 高时效的数据同步：目前数据源同步的自动更新频率为 1 小时；通过 webhook 触发，可以在数据有新增或修改时立刻触发自动化流程、完成数据同步。​
+
+
+
+二、操作流程​
+
+进入多维表格，点击右上角的 自动化 按钮，创建一个自动化流程。​
+
+获取 webhook 地址​
+
+在左侧的触发条件中，选择 接收到 webhook 时，就可以看到该自动化流程对应的唯一的 webhook 地址。​
+
+每个 webhook 触发的自动化流程都有一个唯一的 webhook 地址。该地址不支持手动刷新、不可编辑。从外部系统发送 HTTP 请求时，需填写此地址。​
+
+​
+
+250px|700px|reset
+
+![](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/5843412970f84cc080f42b5b71e26efc~tplv-jbbdkfciu3-image:0:0.image)​​
+
+250px|700px|reset
+
+![](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/7625a0832ef043239795fa2b46744e1c~tplv-jbbdkfciu3-image:0:0.image)​​
+
+进行安全设置​
+
+你可以按需进行安全设置，即 IP 白名单和凭证校验，增强调用的安全性。​
+
+IP 白名单：开启后，只有来自白名单内的 IP 地址发送的请求才能触发自动化流程。最多支持输入 10 个 IP 地址。输入完成一个 IP 地址后，请点击回车再输入下一个。​
+
+凭证校验（Bearer token）：相当于 webhook 触发的密码。开启后，发送请求时必须携带此凭证，才能触发自动化流程，以确保来源可信。你可以一键复制或重置 token。重置后的 token 会在点击自动化流程的 保存并启用 后生效。​
+
+关于 Bearer token 的参数及详情说明，请参考[自动化 webhook 参数的详细说明](https://www.feishu.cn/hc/zh-CN/articles/383585269199)。​
+
+​
+
+250px|700px|reset
+
+![image.png](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/e2f1bd3094ba4aafb86fd8869d06c60a~tplv-jbbdkfciu3-png:0:0.png)​​
+
+进行输出设置​
+
+“输出设置”是指对 webhook 的输出进行定义，以便在后续的自动化流程中使用。有三种输出设置的方法：“通过发送请求设置”“手动设置”和“无需输出”。​
+
+​
+
+250px|700px|reset
+
+![](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/189b643b29c3457e99057b59f3af7073~tplv-jbbdkfciu3-image:0:0.image)​​
+
+  * “通过发送请求设置”：向该自动化流程对应的 webhook 地址发送示例请求，发送后，点击 生成 来完成设置。点击 生成 按钮后，按钮会显示为加载状态。​
+
+
+
+  * 监听请求的时间范围为最近 3 分钟直至加载结束。​
+
+
+
+  * 加载的时长最多为 5 秒钟，若 5 秒后仍未获取到请求，则会停止加载，需重新发送请求；若 5 秒后接收到了请求，则会展示请求体（body）的完整示例结构，不可修改。若 5 秒钟内获取到多个请求，会以最新请求为准。​
+
+
+
+  * 如果想要发送新的请求体并生成设置，点击 重新生成 即可。​
+
+
+
+  * 在接收到请求后，会自动按照示例请求的结构生成“输出示例”（JSON schema）。支持解析完整的 item 结构。​
+
+
+
+  * 需注意，如果对已启用的流程进行编辑或修改，使用这种方式去设置输出时，自动化流程也会被完整触发一次。​
+
+
+
+​
+
+250px|700px|reset
+
+![](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/aa682a09a4a94b979f7aecff903b8e90~tplv-jbbdkfciu3-image:0:0.image)​​
+
+250px|700px|reset
+
+![](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/380c0b9e52474f15969019bec6eb7fd0~tplv-jbbdkfciu3-image:0:0.image)​​
+
+  * “手动设置”：手动在“示例请求体”中输入请求体的 JSON 示例。​
+
+
+
+  * “无需输出”：若后续的自动化流程步骤不需要引用外部发来的请求信息，则可以选择无需输出。​
+
+
+
+如果你在进行了部分编辑后，切换到了其他的输出设置方法，原本的编辑会为你暂时保存，关闭自动化流程配置弹窗时彻底清除。​
+
+使用接收到的 webhook 信息​
+
+接收到的 webhook 信息，在完成 schema 构造后，可以被后续的自动化流程步骤引用。​
+
+在想要引用的文本框中点击​ 图标，鼠标悬停在 第 1 步发送请求的返回值 上，你可以直接点击 选择 来完成引用，也可以点击 继续 选择 config、elements 或 header。如需更详细的信息，可点击 继续 进行下钻。​
+
+​
+
+250px|700px|reset
+
+![](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/4ad3e50c94da4677ba7a6596ce6d2c26~tplv-jbbdkfciu3-image:0:0.image)​​
+
+250px|700px|reset
+
+![](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/0ac386b1243a4c14b771a3ea9d6840f1~tplv-jbbdkfciu3-image:0:0.image)​​
+
+若你在后续步骤中引用了 webhook 信息后，又修改了 JSON schema，引用会失效。​
+
+三、了解更多​
+
+[自动化 webhook 参数的详细说明](https://www.feishu.cn/hc/zh-CN/articles/383585269199)​
+
+四、常见问题​

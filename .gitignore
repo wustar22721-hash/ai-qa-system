@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 环境变量
+.env
+
+# Chroma 向量数据
+data/chroma/
+
+# Node
+node_modules/
+dist/
+
+# IDE
+.idea/
+.vscode/
