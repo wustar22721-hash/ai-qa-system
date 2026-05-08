@@ -15,6 +15,8 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-v4-pro")
 # Query Rewriting 使用轻量非推理模型，避免 reasoning_content 空 content 问题
 REWRITER_MODEL = os.getenv("REWRITER_MODEL", "deepseek-chat")
+# Agent function calling 需要非推理模型
+AGENT_MODEL = os.getenv("AGENT_MODEL", "deepseek-chat")
 
 # Chroma
 CHROMA_PERSIST_DIR = str(BASE_DIR / os.getenv("CHROMA_PERSIST_DIR", "data/chroma"))

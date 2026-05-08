@@ -1,39 +1,69 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ChatView from '@/views/ChatView.vue'
+import AgentChatView from '@/views/AgentChatView.vue'
 
-const conversations = ref([
+const mode = ref('knowledge') // 'knowledge' | 'agent'
+
+const knowledgeConvs = ref([
   { id: '1', title: '知识库问答' },
 ])
+const agentConvs = ref([
+  { id: 'agent-1', title: '智能助手' },
+])
 
-const currentId = ref('1')
+const currentKbId = ref('1')
+const currentAgentId = ref('agent-1')
+
+const conversations = computed(() =>
+  mode.value === 'knowledge' ? knowledgeConvs.value : agentConvs.value
+)
+
+const currentId = computed(() =>
+  mode.value === 'knowledge' ? currentKbId.value : currentAgentId.value
+)
 
 const currentTitle = computed(() =>
   conversations.value.find((c) => c.id === currentId.value)?.title || ''
 )
 
 function switchConv(id) {
-  currentId.value = id
+  if (mode.value === 'knowledge') {
+    currentKbId.value = id
+  } else {
+    currentAgentId.value = id
+  }
 }
 
 function addConv() {
   const id = String(Date.now())
-  conversations.value.push({ id, title: '新对话' })
-  currentId.value = id
+  if (mode.value === 'knowledge') {
+    knowledgeConvs.value.push({ id, title: '新对话' })
+    currentKbId.value = id
+  } else {
+    agentConvs.value.push({ id: 'agent-' + id, title: '新任务' })
+    currentAgentId.value = 'agent-' + id
+  }
 }
 
 function deleteConv(id, e) {
   e.stopPropagation()
-  const idx = conversations.value.findIndex(c => c.id === id)
+  const list = mode.value === 'knowledge' ? knowledgeConvs : agentConvs
+  const idx = list.value.findIndex(c => c.id === id)
   if (idx === -1) return
-  conversations.value.splice(idx, 1)
+  list.value.splice(idx, 1)
   if (currentId.value === id) {
-    currentId.value = conversations.value[0]?.id || ''
+    if (mode.value === 'knowledge') {
+      currentKbId.value = knowledgeConvs.value[0]?.id || ''
+    } else {
+      currentAgentId.value = agentConvs.value[0]?.id || ''
+    }
   }
 }
 
 function renameConv(newTitle) {
-  const conv = conversations.value.find(c => c.id === currentId.value)
+  const list = mode.value === 'knowledge' ? knowledgeConvs : agentConvs
+  const conv = list.value.find(c => c.id === currentId.value)
   if (conv) {
     conv.title = newTitle
   }
@@ -45,7 +75,7 @@ function renameConv(newTitle) {
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo-row">
-          <span class="logo-icon">✦</span>
+          <span class="logo-icon" :class="mode">✦</span>
           <span class="logo-text">KBQA</span>
         </div>
         <button class="new-chat-btn" @click="addConv" title="新对话">
@@ -56,6 +86,32 @@ function renameConv(newTitle) {
         </button>
       </div>
 
+      <!-- ── 模式切换 ── -->
+      <div class="mode-tabs">
+        <button
+          class="mode-tab"
+          :class="{ active: mode === 'knowledge' }"
+          @click="mode = 'knowledge'"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          </svg>
+          知识问答
+        </button>
+        <button
+          class="mode-tab"
+          :class="{ active: mode === 'agent' }"
+          @click="mode = 'agent'"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          智能助手
+        </button>
+      </div>
+
+      <!-- ── 会话列表 ── -->
       <nav class="conv-list">
         <div
           v-for="conv in conversations"
@@ -80,12 +136,19 @@ function renameConv(newTitle) {
       </nav>
 
       <div class="sidebar-footer">
-        <span class="footer-text">飞书知识库 · RAG 问答</span>
+        <span class="footer-text">{{ mode === 'knowledge' ? '飞书知识库 · RAG 问答' : '智能助手 · Agent 模式' }}</span>
       </div>
     </aside>
 
     <main class="main-panel">
       <ChatView
+        v-if="mode === 'knowledge'"
+        :conversation-id="currentId"
+        :title="currentTitle"
+        @rename-conversation="renameConv"
+      />
+      <AgentChatView
+        v-else
         :conversation-id="currentId"
         :title="currentTitle"
         @rename-conversation="renameConv"
@@ -95,7 +158,7 @@ function renameConv(newTitle) {
 </template>
 
 <style>
-/* ── 全局重置（替换 style.css 的内容） ── */
+/* ── 全局重置 ── */
 * {
   margin: 0;
   padding: 0;
@@ -112,20 +175,10 @@ html, body, #app {
   background: #f0f2f5;
 }
 
-/* ── 滚动条 ── */
-::-webkit-scrollbar {
-  width: 5px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 </style>
 
 <style scoped>
@@ -161,7 +214,6 @@ html, body, #app {
   align-items: center;
   gap: 10px;
 }
-
 .logo-icon {
   width: 30px;
   height: 30px;
@@ -172,8 +224,11 @@ html, body, #app {
   border-radius: 9px;
   color: #fff;
   font-size: 15px;
+  transition: background 0.3s;
 }
-
+.logo-icon.agent {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
 .logo-text {
   color: #ececec;
   font-size: 16px;
@@ -198,6 +253,38 @@ html, body, #app {
   background: #2a2a30;
   color: #e5e7eb;
   border-color: #52525b;
+}
+
+/* ── 模式切换标签 ── */
+.mode-tabs {
+  display: flex;
+  margin: 0 10px;
+  padding: 2px;
+  background: #111115;
+  border-radius: 8px;
+  gap: 2px;
+}
+.mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mode-tab:hover {
+  color: #9ca3af;
+}
+.mode-tab.active {
+  background: #26262b;
+  color: #e5e7eb;
 }
 
 /* ── 会话列表 ── */
@@ -227,7 +314,6 @@ html, body, #app {
   background: rgba(255, 255, 255, 0.08);
   color: #f4f4f5;
 }
-
 .conv-icon {
   flex-shrink: 0;
   opacity: 0.5;
@@ -235,14 +321,12 @@ html, body, #app {
 .conv-item.active .conv-icon {
   opacity: 0.85;
 }
-
 .conv-title {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .conv-delete {
   flex-shrink: 0;
   width: 26px;

@@ -21,3 +21,9 @@ dist/
 # IDE
 .idea/
 .vscode/
+
+# Claude Code
+.claude/
+
+# Agent 测试数据（工单 JSON）
+data/tickets.json
