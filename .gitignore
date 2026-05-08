@@ -11,6 +11,9 @@ venv/
 # Chroma 向量数据
 data/chroma/
 
+# Excel 临时文件
+~$*.xlsx
+
 # Node
 node_modules/
 dist/

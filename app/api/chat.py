@@ -10,8 +10,11 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 @router.post("", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
-    result = rag_chat(req.query)
+    result = rag_chat(req.query, history=req.history)
     return ChatResponse(
         answer=result["answer"],
-        sources=[SourceItem(file=s["file"], content=s["content"]) for s in result["sources"]],
+        sources=[
+            SourceItem(file=s["file"], content=s["content"], chunk_ids=s.get("chunk_ids", []))
+            for s in result["sources"]
+        ],
     )

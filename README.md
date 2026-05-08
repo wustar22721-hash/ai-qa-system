@@ -1,164 +1,157 @@
-# 🤖 KBQA — 智能知识库问答系统
+# KBQA — 智能知识库问答系统
 
-让员工告别翻阅上百篇文档，直接**用自然语言提问，秒级获得准确答案**。
+让员工告别翻阅上百篇文档，直接用自然语言提问，秒级获得准确答案。
 
-典型场景：企业内部知识库、产品帮助中心、客服辅助系统。当前以飞书全系产品文档为示例，一键检索 439 篇官方帮助文档，答案可追溯到原文。
+典型场景：企业内部知识库、产品帮助中心、客服辅助系统。支持 Markdown、PDF、Excel 多格式知识库，答案可逐条追溯到原文。
 
-> **技术栈**：Vue 3 · FastAPI · LangChain · ChromaDB · BGE · DeepSeek-v4
-
----
-
-## 🏗️ 技术架构
-
-前端 → API 网关 → RAG 服务链 → 底层基础设施，三层解耦：
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Frontend (Vue 3)                     │
-│              Element Plus · Axios · Vite                 │
-│                   localhost:5173                         │
-└────────────────────────┬────────────────────────────────┘
-                         │  POST /chat
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Backend (FastAPI)                       │
-│                   localhost:8000                         │
-│                                                         │
-│   ┌──────────┐  ┌──────────┐  ┌──────────────────────┐ │
-│   │  API 层  │  │ 模型定义 │  │    服务层 (RAG)       │ │
-│   │  /chat   │  │ schemas  │  │  loader → cleaner     │ │
-│   │  /health │  │          │  │    ↓                  │ │
-│   └──────────┘  └──────────┘  │  splitter ← LangChain │ │
-│                                │    ↓                  │ │
-│                                │  embedding ←LangChain │ │
-│                                │    ↓                  │ │
-│                                │  vectorstore←LangChain│ │
-│                                │    ↓                  │ │
-│                                │  reranker → llm       │ │
-│                                └──────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-     │                    │                    │
-     ▼                    ▼                    ▼
-┌──────────┐  ┌──────────────────┐  ┌──────────────────┐
-│ ChromaDB │  │  BGE Embedding   │  │  DeepSeek API    │
-│ 向量存储 │  │  (bge-small-zh)  │  │  (v4-pro)        │
-└──────────┘  └──────────────────┘  └──────────────────┘
-```
+> **技术栈**：Vue 3 · FastAPI · LangChain · ChromaDB · BGE · DeepSeek · PyMuPDF
 
 ---
 
-## 🔄 工作流程
+## 效果展示
 
-从用户输入到答案返回，经过 **检索 → 重排序 → 组装 → 生成** 四个阶段：
+![效果展示](效果展示图.jpg)
+
+---
+
+## 技术架构
 
 ```
-用户提问
-  │
-  ▼
-┌─────────────────────────────────────────────────────┐
-│  ① 向量检索（ChromaDB）                               │
-│  将问题转为 512 维向量，在向量库中召回 Top-10 候选片段   │
-└─────────────────────────────────────────────────────┘
-  │
-  │  10 条候选
-  ▼
-┌─────────────────────────────────────────────────────┐
-│  ② 混合重排序（Hybrid Reranker）                      │
-│  70% 向量相似度 + 30% 关键词重叠，精选 Top-5 最相关片段 │
-│  针对权限/功能类问题自动加权                           │
-└─────────────────────────────────────────────────────┘
-  │
-  │  5 条精选上下文
-  ▼
-┌─────────────────────────────────────────────────────┐
-│  ③ 上下文组装                                       │
-│  拼接系统指令 + 参考上下文 + 用户问题，构造 Prompt      │
-└─────────────────────────────────────────────────────┘
-  │
-  │  完整 Prompt
-  ▼
-┌─────────────────────────────────────────────────────┐
-│  ④ LLM 生成（DeepSeek-v4-pro）                       │
-│  基于上下文生成答案，逐条标注来源文档                    │
-│  temperature=0.3，确保准确性和一致性                   │
-└─────────────────────────────────────────────────────┘
-  │
-  │  { answer, sources }
-  ▼
-返回答案 + 可溯源引用
+┌──────────────────────────────────────────────────────────────┐
+│                     Frontend (Vue 3)                          │
+│              ChatGPT 风格 UI · Vite · Axios                    │
+│                    localhost:5173                              │
+└──────────────────────────┬───────────────────────────────────┘
+                           │  POST /chat
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Backend (FastAPI)                          │
+│                     localhost:8000                             │
+│                                                               │
+│  ┌──────────┐  ┌────────────┐  ┌───────────────────────────┐ │
+│  │  API 层  │  │  模型定义   │  │      服务层 (RAG)          │ │
+│  │  /chat   │  │  schemas   │  │                             │ │
+│  │  /health │  │            │  │  rewriter → vectorstore     │ │
+│  └──────────┘  └────────────┘  │      ↓                      │ │
+│                                 │  reranker → llm            │ │
+│  ┌──────────────────────────┐  │                             │ │
+│  │     Ingest Pipeline       │  │  loader_manager            │ │
+│  │  load → clean → split     │  │    ├── MarkdownLoader      │ │
+│  │    → filter → embed       │  │    ├── PdfLoader           │ │
+│  └──────────────────────────┘  │    └── ExcelLoader          │ │
+└───────────────────────────────────────────────────────────────┘
+       │                  │                    │
+       ▼                  ▼                    ▼
+┌────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│  ChromaDB  │  │  BGE Embedding   │  │  DeepSeek API    │
+│  向量存储  │  │  (bge-small-zh)  │  │  (v4-pro / chat) │
+└────────────┘  └──────────────────┘  └──────────────────┘
 ```
 
 ---
 
-## ✨ 核心功能
+## 核心特性
 
-| 功能 | 说明 |
-|------|------|
-| **知识库问答** | 基于 439 篇飞书官方文档，覆盖功能使用、权限配置、操作流程等高频问题 |
-| **混合检索** | 向量语义 + 关键词 bigram 双路融合，解决"口语问法 vs 正式术语"的匹配偏差 |
-| **领域增强** | 自动识别权限/功能类意图，动态加权管控关键词，区分"能不能"和"怎么做" |
-| **来源追溯** | 每个回答逐条标注来源文档，前端展示可展开的原文卡片，答案有据可查 |
+### 多格式知识库
+
+| 格式 | 状态 | 实现 |
+|------|------|------|
+| Markdown (.md) | ✅ 已实现 | 递归读取 + 正则清洗（去图片/链接/视频噪声） |
+| PDF (.pdf) | ✅ 已实现 | PyMuPDF 逐页提取 + 页码过滤 |
+| Excel (.xlsx) | ✅ 已实现 | pandas 逐 sheet 结构化转自然语言文本 |
+
+所有格式通过统一的 `BaseLoader` 接口接入，新增格式只需实现子类并在注册表加一行。
+
+### 智能检索链路
+
+```
+用户提问 → Query Rewriting → 向量检索 Top-10 → 混合 Reranker Top-5 → LLM 生成
+```
+
+- **Query Rewriting**：LLM 将口语化短句（"这个怎么关"）改写为完整检索语句（"飞书消息通知的关闭方法"），改写失败自动降级
+- **Hybrid Reranker**：70% 向量相似度 + 30% 关键词 bigram 重叠，权限/功能类问题自动加权
+- **Metadata 透传**：全链路保留 `document_id`、`chunk_id`、`category`、`file_type` 等字段，支持来源精确追溯
+
+### 评测体系
+
+基于 30 条自动生成的评测数据集，对比两种检索策略：
+
+| 指标 | 纯向量检索 | 向量 + Reranker | 提升 |
+|------|-----------|----------------|------|
+| Hit@1 | 46.67% | **73.33%** | +26.66% |
+| Hit@3 | 76.67% | **80.00%** | +3.33% |
+| MRR | 0.6075 | **0.7750** | +0.1675 |
+
+评测脚本 `run_evaluation.py` + 自动生成脚本 `generate_eval_dataset.py` 可实现一键复现。
+
+### AI 产品级前端
+
+- ChatGPT 风格消息气泡（渐变蓝用户气泡 + 白底 AI 气泡）
+- 来源引用默认折叠，弱化视觉权重
+- 圆形浮动输入框，聚焦时紫色 glow 效果
+- Typing dots 加载动画 + AI avatar 呼吸光晕
+- 欢迎页推荐问题、对话自动命名、侧边栏删除
+- Markdown 渲染优化（代码块、表格、引用块）
 
 ---
 
-## 📊 数据规模
+## 数据规模
 
 | 指标 | 数值 | 说明 |
 |------|------|------|
-| 源文档 | 439 篇 | 飞书官方帮助文档，覆盖 12 个产品模块 |
-| 文本切片 | ~2,800 条 | chunk_size=500 字符，overlap=100 字符 |
-| 向量索引 | ~2,500 条 | 经质量过滤（去除短文本、表格占比过高的切片） |
-| 嵌入维度 | 512 维 | BAAI/bge-small-zh 模型输出 |
+| 源文档 | 439 .md + 3 .pdf + 2 .xlsx | 飞书官方帮助文档，覆盖 12 个产品模块 |
+| 文本切片 | ~2,000 条 | chunk_size=500 字符，overlap=100 字符 |
+| 向量索引 | 1,772 条 | 经质量过滤后入库 |
+| 嵌入维度 | 512 维 | BAAI/bge-small-zh，CPU 推理 |
 
 ---
 
-## ⚡ 性能表现
-
-| 环节 | 耗时 | 备注 |
-|------|------|------|
-| 首次向量构建 | ~3-5 分钟 | CPU 上完成 2,500 条文本的嵌入 + ChromaDB 写入 |
-| 后续冷启动 | ~5-10 秒 | 直接加载已持久化的向量库和嵌入模型 |
-| 检索 + 重排序 | ~200 ms | ChromaDB 余弦检索 + 混合重排序，10 选 5 |
-| LLM 生成 | ~2-3 秒 | DeepSeek-v4-pro API，取决于输出长度 |
-| **端到端响应** | **~3-4 秒** | 用户提问到前端展示答案 + 来源引用 |
-
-> 检索环节在本地 CPU 完成，LLM 生成依赖 API 网络延迟。混合重排序后 Top-5 相关率相比纯向量检索提升约 30%，权限/功能类问题命中提升尤为明显。
-
----
-
-## 📁 项目结构
+## 项目结构
 
 ```
-# 后端（Python）      前端（Node）       数据
 kbqa/
-├── app/                          # 后端 (Python FastAPI)
-│   ├── main.py                   # 应用入口、生命周期、CORS
+├── app/                              # 后端 (Python FastAPI)
+│   ├── main.py                       # 应用入口、生命周期、CORS
 │   ├── api/
-│   │   └── chat.py               # POST /chat 接口
+│   │   └── chat.py                   # POST /chat 接口
 │   ├── core/
-│   │   └── config.py             # 环境变量与全局配置
+│   │   └── config.py                 # 环境变量与全局配置
 │   ├── models/
-│   │   └── schemas.py            # Pydantic 请求/响应模型
+│   │   └── schemas.py                # Pydantic 请求/响应模型
 │   └── services/
-│       ├── loader.py             # 递归加载 Markdown 知识文件
-│       ├── cleaner.py            # 文本清洗（去图片/链接/时间戳）
-│       ├── splitter.py           # 文本切片 (LangChain)
-│       ├── embedding.py          # BGE 嵌入模型 (LangChain 封装)
-│       ├── vectorstore.py        # ChromaDB 向量库 (LangChain 集成)
-│       ├── reranker.py           # 混合重排序（向量 + 关键词）
-│       ├── llm.py                # DeepSeek LLM 调用
-│       └── rag.py                # RAG 全流程编排
-├── web/                          # 前端 (Vue 3 + Vite)
+│       ├── loaders/                  # 多格式 loader 集合
+│       │   ├── base.py               # 抽象基类 + metadata 约定
+│       │   ├── markdown_loader.py    # .md loader
+│       │   ├── pdf_loader.py         # .pdf loader (PyMuPDF)
+│       │   └── excel_loader.py       # .xlsx loader (pandas)
+│       ├── loader_manager.py         # 统一调度：扫描 + 分派 + 聚合
+│       ├── ingest.py                 # 入库流水线编排
+│       ├── cleaner.py                # Markdown 文本清洗
+│       ├── splitter.py               # 文本切片 (LangChain)
+│       ├── embedding.py              # BGE 嵌入模型
+│       ├── vectorstore.py            # ChromaDB 向量库
+│       ├── reranker.py               # 混合重排序
+│       ├── rewriter.py               # Query Rewriting
+│       ├── llm.py                    # DeepSeek LLM 调用
+│       └── rag.py                    # RAG 全流程编排
+├── web/                              # 前端 (Vue 3 + Vite)
 │   ├── src/
-│   │   ├── App.vue               # 根布局（侧栏 + 主区域）
+│   │   ├── App.vue                   # 根布局（暗色侧栏 + 主区域）
 │   │   ├── views/
-│   │   │   └── ChatView.vue      # 聊天主界面
+│   │   │   └── ChatView.vue          # 聊天主界面
 │   │   └── api/
-│   │       └── chat.js           # Axios API 客户端
-│   ├── vite.config.js            # Vite 配置（含 API 代理）
+│   │       └── chat.js               # Axios API 客户端
+│   ├── vite.config.js                # Vite 配置（含 API 代理）
 │   └── package.json
-├── 飞书FAQ_知识库_MD/             # 知识库源文件（12 类 439 篇）
-├── data/chroma/                  # ChromaDB 持久化向量数据
+├── 飞书FAQ_知识库/                    # 知识库源文件
+│   ├── md/                           # 439 篇 Markdown（12 个分类）
+│   ├── pdf/                          # 3 个 PDF 文档
+│   └── excel/                        # 2 个 Excel 表格
+├── data/chroma/                      # ChromaDB 持久化向量数据
+├── eval_dataset.json                 # 评测数据集（30 条 QA）
+├── eval_results.md                   # 评测结果报告
+├── run_evaluation.py                 # 评测脚本
+├── generate_eval_dataset.py          # 评测数据生成脚本
 ├── requirements.txt
 ├── .env.example
 └── .gitignore
@@ -166,13 +159,12 @@ kbqa/
 
 ---
 
-## 🚀 安装与运行
+## 安装与运行
 
 ### 环境要求
 
 - Python ≥ 3.10
 - Node.js ≥ 18
-- Git
 
 ### 1. 克隆项目
 
@@ -181,78 +173,80 @@ git clone git@github.com:wustar22721-hash/ai-qa-system.git
 cd ai-qa-system
 ```
 
-### 2. 后端安装
+### 2. 后端
 
 ```bash
 # 创建虚拟环境
 python -m venv .venv
-source .venv/bin/activate   # Linux/Mac
-# .venv\Scripts\activate    # Windows
+source .venv/bin/activate      # Linux/Mac
+# .venv\Scripts\activate       # Windows
 
 # 安装依赖
 pip install -r requirements.txt
 
-# 配置环境变量
+# 配置 API Key
 cp .env.example .env
-# 编辑 .env，填入你的 DEEPSEEK_API_KEY
-```
+# 编辑 .env，填入 DEEPSEEK_API_KEY
 
-### 3. 启动后端
-
-```bash
+# 启动
 python app/main.py
-# 服务启动于 http://localhost:8000
-# 首次启动自动构建向量索引，后续启动秒级加载
+# → http://localhost:8000
+# 首次启动自动构建向量索引，后续秒级加载
 ```
 
-### 4. 前端安装与启动
+### 3. 前端
 
 ```bash
 cd web
 npm install
 npm run dev
-# 开发服务器启动于 http://localhost:5173
+# → http://localhost:5173
 ```
 
-访问 `http://localhost:5173`，输入飞书相关问题即可体验。
+### 4. 评测（可选）
 
-> **提示**：首次启动后端时会自动下载 BGE 模型（约 100MB，需外网）并构建向量索引，耗时约 3-5 分钟。后续启动直接加载缓存，5-10 秒即就绪。
+```bash
+# 生成评测数据（需 API Key）
+python generate_eval_dataset.py
 
----
-
-## 🔧 环境变量说明
-
-在项目根目录创建 `.env` 文件（参考 `.env.example`）：
-
-| 变量名 | 必填 | 说明 | 默认值 |
-|--------|------|------|--------|
-| `DEEPSEEK_API_KEY` | ✅ | DeepSeek API 密钥 | `""` |
-| `DEEPSEEK_BASE_URL` | - | API 地址 | `https://api.deepseek.com/v1` |
-| `LLM_MODEL` | - | 模型名称 | `deepseek-v4-pro` |
-| `CHROMA_PERSIST_DIR` | - | ChromaDB 持久化路径 | `data/chroma` |
-| `HF_ENDPOINT` | - | HuggingFace 镜像（国内加速） | `https://hf-mirror.com` |
+# 运行评测
+python run_evaluation.py
+```
 
 ---
 
-## 📡 API 接口
+## 环境变量
+
+| 变量 | 必填 | 说明 | 默认值 |
+|------|------|------|--------|
+| `DEEPSEEK_API_KEY` | ✅ | DeepSeek API 密钥 | — |
+| `DEEPSEEK_BASE_URL` | — | API 地址 | `https://api.deepseek.com/v1` |
+| `LLM_MODEL` | — | 生成模型 | `deepseek-v4-pro` |
+| `REWRITER_MODEL` | — | 改写模型（需非推理型） | `deepseek-chat` |
+| `CHROMA_PERSIST_DIR` | — | ChromaDB 存储路径 | `data/chroma` |
+| `HF_ENDPOINT` | — | HuggingFace 镜像 | `https://hf-mirror.com` |
+
+---
+
+## API 接口
 
 ### `POST /chat`
 
-**请求体：**
 ```json
+// 请求
 {
-  "query": "飞书会议如何开启自动字幕？"
+  "query": "飞书会议如何开启自动字幕？",
+  "history": null
 }
-```
 
-**响应体：**
-```json
+// 响应
 {
-  "answer": "在飞书会议中开启自动字幕的步骤如下：\n1. 加入会议后，点击底部工具栏的「更多」...",
+  "answer": "在飞书会议中开启自动字幕的步骤如下：\n1. 加入会议后...",
   "sources": [
     {
       "file": "开启字幕与翻译.md",
-      "content": "会议中点击底部工具栏的..."
+      "content": "会议中点击底部工具栏的...",
+      "chunk_ids": ["a091674bfd3d_2", "a091674bfd3d_3"]
     }
   ]
 }
@@ -260,96 +254,63 @@ npm run dev
 
 ### `GET /health`
 
-**响应体：**
 ```json
-{
-  "status": "ok"
-}
+{ "status": "ok" }
 ```
 
 ---
 
-## 💡 项目亮点
+## 检索评测
 
-### 工程角度
+评测数据集 `eval_dataset.json` 包含 30 条跨 12 个分类的真实场景 QA 对，由 LLM 自动生成并人工核验。
 
-- **模块化管道架构**：将 RAG 拆解为 loader → cleaner → splitter → embed → vectorstore → reranker → llm 七个独立服务，各环节可单独替换或复用。例如把 BGE 换成其他嵌入模型、DeepSeek 换成 OpenAI，只需修改对应模块，不影响其余链路。
-- **LangChain 作为组件库而非框架**：仅在文本切片（`RecursiveCharacterTextSplitter`）、嵌入封装（`HuggingFaceEmbeddings`）、向量库集成（`Chroma`）三处使用 LangChain 的成熟组件。重排序、清洗、RAG 编排等业务逻辑全部手写，避免了"用了框架但不知道为什么能跑"的问题。
-- **无 GPU 可运行**：BGE-small-zh 在 CPU 上完成推理，重排序采用自定义算法替代交叉编码器模型，省去 GPU 依赖，普通笔记本即可跑通全链路。
-- **感知式启动策略**：首次运行自动构建向量库并持久化到磁盘，后续启动检测到已有索引则跳过构建直接加载，冷启动时间从数分钟降至 5-10 秒。
-- **前后端分离 + 代理开发**：Vue 3 + FastAPI 独立部署，Vite 开发服务器将 `/api/*` 请求代理至后端，开发期零跨域成本。
+| 指标 | 纯向量检索 | 向量 + Reranker | 提升 |
+|------|-----------|----------------|------|
+| Hit@1 | 46.67% | **73.33%** | +26.66% |
+| Hit@3 | 76.67% | **80.00%** | +3.33% |
+| MRR | 0.6075 | **0.7750** | +0.1675 |
 
-### AI 角度
-
-- **混合检索与重排序**：采用向量语义 + 关键词双通路融合打分，将 ChromaDB 返回的距离度量转换为相似度后进行加权组合：
-
-  ```
-  score = α · sim_vector + (1 - α) · sim_keyword + δ_permission
-  sim_vector = 1 / (1 + d_chroma)      # 距离 → 相似度
-  sim_keyword = hit(bigram) / |bigram|  # 去停用词后的 bigram 命中率
-  ```
-
-  其中 α = 0.7，向量侧捕获语义相近但措辞不同的内容，关键词侧保障术语精确匹配。
-
-- **领域自适应增强**：当检测到权限/功能类查询时，引入偏置项 δ_permission，对包含管控关键词（设置、允许、禁止、权限等）的片段线性加分，并对末位执行兜底替换，确保至少一条管控定义类上下文进入最终 Prompt。
-
-- **可溯源生成**：System Prompt 约束模型逐条标注引用来源文件名，前端渲染为可展开的原文卡片，使用户可在 UI 层直接验证答案的准确性。
-
-- **全链路中文优化**：嵌入层 BGE-small-zh → 检索层中文 bigram 关键词重叠 → 生成层 DeepSeek-v4-pro，三阶段均针对中文场景调优。
+- Reranker 在 30 条评测中 10 次优于纯向量检索，0 次差于
+- 5 条 Bad Case 双方均未命中，已定位为口语化短 query 问题（已通过 Query Rewriting 改善）
 
 ---
 
-## 🧪 技术难点与解决方案
+## 项目亮点
 
-### 问题一：口语化提问 vs 文档术语，匹配不上
+### 工程方面
 
-ChromaDB 返回的 Top-N 结果有时与查询意图不相关，典型如用户问"怎么看谁动了我的表格"，文档用的是"多维表格操作日志"，纯向量检索无法跨越两者间的措辞鸿沟。
+- **模块化 RAG 管道**：loader → cleaner → splitter → embed → vectorstore → reranker → llm，七个独立服务可单独替换
+- **LangChain 作为组件库**：仅用于文本切片、嵌入封装、向量库集成，业务逻辑手写
+- **无 GPU 可运行**：BGE-small-zh CPU 推理 + 自定义轻量 reranker
+- **感知式启动**：首次自动构建向量库，后续启动 5-10 秒即就绪
+- **多格式 loader 架构**：统一 `BaseLoader` 接口 + Registry 模式，新增格式零侵入
+- **ChatGPT 风格前端**：Vue 3 纯 CSS 实现消息气泡、浮动输入框、typing dots 动画
 
-**做法**：引入混合重排序——检索阶段召回 Top-10 候选人，再以 70% 向量相似度 + 30% 关键词 bigram 重叠率重新打分。中文先去掉"的了呢吗"等停用词再算 bigram，两个通路互补：向量兜底语义，关键词保障术语精确命中。
+### AI 方面
 
----
-
-### 问题二：知识库混入大量噪声，检索质量受影响
-
-飞书帮助文档含有大量 Markdown 图片标记 `![image](url)`、视频控件文本（播放/静音/全屏）、图片尺寸标记（250px/700px）等非内容字符。这些噪声直接参与向量化会拉低检索精度。
-
-**做法**：在切分前插入清洗层，按规则剔除图片占位、链接 URL 保留链接文字、过滤纯符号行和表格分隔线。清洗后文本更干净，向量库的信噪比显著提升。
-
----
-
-### 问题三：大模型"脑补"不存在的功能
-
-DeepSeek 在上下文信息不足时会调用训练数据补全，曾出现引用飞书实际不存在的配置项，对用户信任度伤害极大。
-
-**做法**：System Prompt 施加硬约束——仅允许基于「参考上下文」回答，不确定时明确回复"文档未提及该功能"，每个结论强制标注来源文件名。前端同步渲染可展开的引用卡片，把"查证"成本降到最低。
+- **Query Rewriting**：口语化短句 → 完整检索语句，类似"这个怎么关"改写为"飞书消息通知的关闭方法"
+- **Hybrid Reranker**：向量相似度 + 关键词 bigram + 领域加权，Hit@1 从 46.67% 提升至 73.33%
+- **Metadata 全链路**：document_id、chunk_id、category、file_type 从入库到 API 返回完整保留
+- **可溯源生成**：System Prompt 约束逐条标注来源，前端可展开原文验证
 
 ---
 
-### 问题四：首次启动太慢，不适合开发迭代
+## 路线图
 
-439 篇文档经完整流水线（清洗→切片→嵌入→写入）需要数分钟，每次改动代码重启都完整重建不可接受。
-
-**做法**：首次执行后将 ChromaDB 索引持久化到磁盘，后续启动检测到已有数据则跳过构建直接加载，从数分钟降至 5-10 秒。同时引入索引前过滤——剔除不足 30 个有效字符的碎片和表格行占比超 30% 的切片，缩减无用索引体积约 10%。
-
----
-
-## 📸 效果展示
-
-![效果展示](效果展示图.jpg)
-
----
-
-## 🗺️ 路线图
-
-当前为单轮问答 MVP 版本，后续迭代方向：
-
-- [ ] 多轮对话支持（上下文记忆 + 追问理解）
-- [ ] 知识库热更新（不重启服务即可增删文档）
-- [ ] Docker 一键部署（`docker compose up` 即可运行）
-- [ ] 飞书机器人接入（@机器人即可在飞书内直接提问）
+- [x] Markdown 知识库 + 向量检索 + Reranker
+- [x] 多格式支持（PDF / Excel）
+- [x] Query Rewriting 口语化改写
+- [x] 评测体系（30 条 QA + Hit@K + MRR）
+- [x] AI 产品级前端 UI
+- [x] Metadata 全链路透传
+- [ ] 多轮对话（上下文记忆 + 追问理解）
+- [ ] Hybrid BM25 + Dense 检索
+- [ ] Category 过滤检索
+- [ ] Docker 一键部署
+- [ ] 飞书机器人接入
 
 ---
 
-## 📄 License
+## License
 
 MIT

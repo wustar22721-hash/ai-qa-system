@@ -80,3 +80,14 @@ def clean_markdown(text: str) -> str:
     text = _MULTI_BLANK_PATTERN.sub("\n\n", "\n".join(clean_lines))
 
     return text.strip()
+
+
+def clean_documents(docs):
+    """对 Document 列表逐条清洗 page_content，保留 metadata。
+
+    目前仅清洗 file_type == "md" 的文档，其他格式直接透传。
+    """
+    for doc in docs:
+        if doc.metadata.get("file_type") == "md":
+            doc.page_content = clean_markdown(doc.page_content)
+    return docs

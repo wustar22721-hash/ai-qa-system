@@ -1,8 +1,13 @@
-"""RAG 问答模块 — 检索 + 拼接上下文 + LLM 生成答案"""
+"""RAG 问答模块 — Query Rewriting → 检索 → Rerank → 拼接上下文 → LLM 生成答案"""
+
+import logging
 
 from app.services.llm import generate_answer
 from app.services.reranker import rerank
-from app.services.vectorstore import similarity_search_with_score
+from app.services.rewriter import rewrite_query
+from app.services.vectorstore import similarity_search_with_metadata
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_INSTRUCTION = """你是一个基于飞书帮助文档的问答助手。请严格根据以下上下文回答问题。
 
@@ -45,36 +50,50 @@ def _build_prompt(query: str, contexts: list[dict[str, str]]) -> str:
 
 
 def _merge_sources(
-    contexts: list[dict[str, str]], max_content_len: int = 400
-) -> list[dict[str, str]]:
-    """按文件名去重合并 chunk，控制每个文件的内容长度"""
+    contexts: list[dict[str, object]], max_content_len: int = 400
+) -> list[dict[str, object]]:
+    """按文件名去重合并 chunk，收集 chunk_ids，控制每个文件的内容长度"""
     merged: dict[str, str] = {}
-    seen: list[str] = []  # 保持出现顺序
+    chunk_ids: dict[str, list[str]] = {}  # file → [chunk_id, ...]
+    seen: list[str] = []
 
     for ctx in contexts:
         fname = ctx.get("source", "")
-        chunk = ctx.get("content", "")
+        chunk_content = ctx.get("content", "")
         if fname not in merged:
             seen.append(fname)
-            merged[fname] = chunk
+            merged[fname] = chunk_content
+            chunk_ids[fname] = []
         else:
-            # 追加拼接，但不超过上限
             remaining = max_content_len - len(merged[fname])
-            if remaining > 0 and chunk.strip():
-                merged[fname] += "\n...\n" + chunk[:remaining]
+            if remaining > 0 and chunk_content.strip():
+                merged[fname] += "\n...\n" + chunk_content[:remaining]
+
+        # 收集 chunk_id
+        meta = ctx.get("metadata", {})
+        if isinstance(meta, dict) and meta.get("chunk_id"):
+            chunk_ids[fname].append(meta["chunk_id"])
 
     return [
-        {"file": f, "content": merged[f][:max_content_len]} for f in seen
+        {
+            "file": f,
+            "content": merged[f][:max_content_len],
+            "chunk_ids": chunk_ids.get(f, []),
+        }
+        for f in seen
     ]
 
 
-def rag_chat(query: str, top_k: int = 5) -> dict:
-    """RAG 问答：检索 top10 → rerank → 取 top5 → LLM 生成"""
-    # 1. 检索 top_k * 2 条（带分数）
-    candidates = similarity_search_with_score(query, top_k=top_k * 2)
+def rag_chat(query: str, history: list[dict[str, str]] | None = None, top_k: int = 5) -> dict:
+    """RAG 问答：Query Rewriting → 检索 top10 → Rerank → 取 top5 → LLM 生成"""
+    # 0. Query Rewriting：将口语化/不完整的 query 改写为独立检索语句
+    search_query = rewrite_query(query, history=history)
+
+    # 1. 检索 top_k * 2 条（带完整 metadata），使用改写后的 search_query
+    candidates = similarity_search_with_metadata(search_query, top_k=top_k * 2)
 
     # 2. Rerank：向量距离 + 关键词重叠 综合排序 → 取 top_k
-    contexts = rerank(query, candidates, top_k=top_k)
+    contexts = rerank(search_query, candidates, top_k=top_k)
 
     # 3. 构造 prompt
     prompt = _build_prompt(query, contexts)

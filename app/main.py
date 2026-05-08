@@ -29,12 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 def _init_vector_store():
-    """初始化向量库：已有则加载，否则从零构建（加载→清洗→切分→入库）"""
-    from app.services.embedding import get_embeddings
-    from app.services.loader import load_markdown_files
-    from app.services.cleaner import clean_markdown
-    from app.services.splitter import split_text
-    from app.services.vectorstore import build_vector_store, load_vector_store
+    """初始化向量库：已有则加载，否则从零构建"""
+    from app.services.vectorstore import load_vector_store
 
     # 已有数据则直接加载
     if Path(CHROMA_PERSIST_DIR).is_dir():
@@ -48,24 +44,11 @@ def _init_vector_store():
         except Exception:
             pass
 
-    # 从零构建
-    logger.info("开始构建向量库...")
-    docs = load_markdown_files(KNOWLEDGE_DIR)
-    logger.info("已加载 %d 个 Markdown 文件", len(docs))
+    # 从零构建：全量 ingest 流水线
+    from app.services.ingest import run_ingest
 
-    all_chunks: list[dict[str, str]] = []
-    for doc in docs:
-        clean = clean_markdown(doc["content"])
-        for part in split_text(clean):
-            all_chunks.append({"content": part, "source": Path(doc["path"]).name})
-
-    logger.info("已切分 %d 个 chunk", len(all_chunks))
-
-    from app.services.vectorstore import filter_for_index
-
-    all_chunks = filter_for_index(all_chunks)
-    get_embeddings()
-    build_vector_store(all_chunks)
+    logger.info("向量库为空，开始全量构建...")
+    run_ingest(KNOWLEDGE_DIR)
     logger.info("向量库构建完成")
 
 

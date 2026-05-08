@@ -43,23 +43,36 @@ def _is_permission_query(query: str) -> bool:
     return any(kw in query for kw in ["权限", "功能"])
 
 
+def _extract_source(d: dict[str, object]) -> str:
+    """从旧格式 (d['source']) 或新格式 (d['metadata']['source']) 提取 source"""
+    if "metadata" in d and isinstance(d["metadata"], dict):
+        return str(d["metadata"].get("source", ""))
+    return str(d.get("source", ""))
+
+
 def rerank(
     query: str,
     docs: list[dict[str, object]],
     top_k: int = 5,
     keyword_weight: float = 0.3,
-) -> list[dict[str, str]]:
-    """对检索结果重排序：向量距离 + 关键词重叠 + 定义加权，取 top_k"""
+) -> list[dict[str, object]]:
+    """对检索结果重排序：向量距离 + 关键词重叠 + 定义加权，取 top_k。
+
+    接受两种输入格式：
+      旧: [{content, source, score}]
+      新: [{content, score, metadata: {source, chunk_id, category, ...}}]
+    输出始终透传 metadata（如果输入中有）。
+    """
 
     if not docs:
         return []
 
     is_perm = _is_permission_query(query)
-    scored: list[tuple[float, dict[str, str]]] = []
+    scored: list[tuple[float, dict[str, object]]] = []
 
     for d in docs:
         content = str(d["content"])
-        source = str(d.get("source", ""))
+        source = _extract_source(d)
         chroma_score = float(d.get("score", 1.0))
 
         vec_sim = 1.0 / (1.0 + chroma_score)
@@ -70,7 +83,12 @@ def rerank(
         if is_perm:
             combined += _permission_boost(content)
 
-        scored.append((combined, {"content": content, "source": source}))
+        out: dict[str, object] = {"content": content, "source": source}
+        # 透传 metadata（如果输入中有）
+        if "metadata" in d:
+            out["metadata"] = d["metadata"]
+
+        scored.append((combined, out))
 
     scored.sort(key=lambda x: x[0], reverse=True)
 
