@@ -1,6 +1,6 @@
 <script setup>
 import { ref, nextTick, watch, computed } from 'vue'
-import { streamChat } from '@/api/chat'
+import { sendMessage } from '@/api/chat'
 
 const props = defineProps({
   conversationId: { type: String, required: true },
@@ -56,35 +56,22 @@ async function handleSend() {
   inputText.value = ''
   scrollToBottom()
 
-  // 取最近 3 轮对话（6 条，不含当前消息）作为改写上下文
-  const prevMsgs = messageMap.value[props.conversationId].slice(0, -1)
-  const history = prevMsgs.slice(-6).map(({ role, content }) => ({ role, content }))
-
-  // 插入空的 assistant 消息，后续逐 token 填充
-  const msgs = messageMap.value[props.conversationId]
-  msgs.push({ role: 'assistant', content: '' })
-  const aiMsg = msgs[msgs.length - 1]
-
   loading.value = true
-
-  await streamChat(text, history, {
-    onToken(token) {
-      aiMsg.content += token
-      loading.value = false  // 收到第一个 token 就结束 loading
-      scrollToBottom()
-    },
-    onDone(sources) {
-      aiMsg.sources = sources
-      loading.value = false
-      scrollToBottom()
-    },
-    onError(_err) {
-      if (!aiMsg.content) {
-        aiMsg.content = '请求失败，请稍后重试'
-      }
-      loading.value = false
-    },
-  })
+  try {
+    // 取最近 3 轮对话（6 条，不含当前消息）作为改写上下文
+    const prevMsgs = messageMap.value[props.conversationId].slice(0, -1)
+    const history = prevMsgs.slice(-6).map(({ role, content }) => ({ role, content }))
+    const { answer, sources } = await sendMessage(text, history)
+    messageMap.value[props.conversationId].push({ role: 'assistant', content: answer, sources })
+  } catch (e) {
+    const msg = e?.code === 'ECONNABORTED'
+      ? '请求超时，AI 正在生成中，请稍后重试'
+      : '请求失败，请稍后重试'
+    messageMap.value[props.conversationId].push({ role: 'assistant', content: msg })
+  } finally {
+    loading.value = false
+    scrollToBottom()
+  }
 }
 
 function handleKeydown(e) {
