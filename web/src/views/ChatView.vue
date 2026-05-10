@@ -60,33 +60,28 @@ async function handleSend() {
   const prevMsgs = messageMap.value[props.conversationId].slice(0, -1)
   const history = prevMsgs.slice(-6).map(({ role, content }) => ({ role, content }))
 
-  // 只创建一条 assistant 消息，stream 中原地更新 content
+  // 插入空的 assistant 消息，后续逐 token 填充
   const msgs = messageMap.value[props.conversationId]
-  const aiMsg = { role: 'assistant', content: '', loading: true }
-  msgs.push(aiMsg)
+  msgs.push({ role: 'assistant', content: '' })
+  const aiMsg = msgs[msgs.length - 1]
 
   loading.value = true
 
   await streamChat(text, history, {
     onToken(token) {
-      if (aiMsg.loading) {
-        aiMsg.loading = false
-        loading.value = false
-      }
       aiMsg.content += token
+      loading.value = false  // 收到第一个 token 就结束 loading
       scrollToBottom()
     },
     onDone(sources) {
       aiMsg.sources = sources
-      aiMsg.loading = false
       loading.value = false
       scrollToBottom()
     },
-    onError() {
+    onError(_err) {
       if (!aiMsg.content) {
         aiMsg.content = '请求失败，请稍后重试'
       }
-      aiMsg.loading = false
       loading.value = false
     },
   })
@@ -144,7 +139,7 @@ watch(messageList, scrollToBottom, { deep: true })
         :class="msg.role"
       >
         <div class="msg-avatar" v-if="msg.role === 'assistant'">
-          <div class="avatar-ai" :class="{ breathing: msg.loading }">
+          <div class="avatar-ai">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
@@ -152,13 +147,7 @@ watch(messageList, scrollToBottom, { deep: true })
         </div>
 
         <div class="msg-bubble" :class="msg.role">
-          <!-- loading：打字动画 | 正常：显示内容 -->
-          <div v-if="msg.loading" class="typing-dots">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-          </div>
-          <div v-else class="msg-content">{{ msg.content }}</div>
+          <div class="msg-content">{{ msg.content }}</div>
 
           <!-- Sources（折叠，弱化） -->
           <div v-if="msg.sources && msg.sources.length" class="msg-sources">
@@ -207,6 +196,23 @@ watch(messageList, scrollToBottom, { deep: true })
         </div>
       </div>
 
+      <!-- Loading skeleton -->
+      <div v-if="loading" class="msg-row assistant">
+        <div class="msg-avatar">
+          <div class="avatar-ai breathing">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+          </div>
+        </div>
+        <div class="msg-bubble assistant loading-bubble">
+          <div class="typing-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ── 输入区域（固定底部，浮层感） ── -->
