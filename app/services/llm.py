@@ -62,14 +62,9 @@ def generate_answer_stream(prompt: str):
             stream=True,
         )
         for chunk in response:
-            try:
-                delta = chunk.choices[0].delta if chunk.choices else None
-                if delta and delta.content:
-                    yield delta.content
-            except Exception:
-                # 单个 chunk 解析失败不应中断整个流
-                logger.warning("[LLM Stream] 单个 chunk 解析异常，跳过: %s", chunk)
-                continue
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield delta.content
     except Exception as e:
-        logger.exception("[LLM Stream] 流式 API 调用失败: %s", e)
+        logger.error("DeepSeek 流式 API 调用失败: %s", e)
         yield f"\n\n抱歉，AI 服务暂时不可用，请稍后重试。（错误信息：{e}）"
