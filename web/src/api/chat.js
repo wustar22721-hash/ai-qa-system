@@ -7,9 +7,11 @@ const http = axios.create({
 
 /**
  * 发送消息到 RAG 知识库，返回 { answer, sources }
+ * @param {string} query  - 用户问题
+ * @param {Array<{role: string, content: string}>} [history] - 最近 N 轮对话历史
  */
-export function sendMessage(query) {
-  return http.post('/chat', { query }).then((res) => ({
+export function sendMessage(query, history) {
+  return http.post('/chat', { query, history: history || undefined }).then((res) => ({
     answer: res.data.answer,
     sources: res.data.sources || [],
   }))

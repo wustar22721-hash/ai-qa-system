@@ -58,7 +58,10 @@ async function handleSend() {
 
   loading.value = true
   try {
-    const { answer, sources } = await sendMessage(text)
+    // 取最近 3 轮对话（6 条，不含当前消息）作为改写上下文
+    const prevMsgs = messageMap.value[props.conversationId].slice(0, -1)
+    const history = prevMsgs.slice(-6).map(({ role, content }) => ({ role, content }))
+    const { answer, sources } = await sendMessage(text, history)
     messageMap.value[props.conversationId].push({ role: 'assistant', content: answer, sources })
   } catch (e) {
     const msg = e?.code === 'ECONNABORTED'
