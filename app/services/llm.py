@@ -39,3 +39,32 @@ def generate_answer(prompt: str, max_retries: int = 2) -> str:
             return f"抱歉，AI 服务暂时不可用，请稍后重试。（错误信息：{e}）"
 
     return "抱歉，AI 服务暂时不可用，请稍后重试。"
+
+
+def generate_answer_stream(prompt: str):
+    """调用 DeepSeek 流式生成回答，逐 token yield。
+
+    使用 stream=True，通过 generator 逐块产出 delta 文本。
+    如果流中有 content 为空的数据块（如 reasoning_content），自动跳过。
+    """
+    if not DEEPSEEK_API_KEY:
+        yield "错误：未配置 DEEPSEEK_API_KEY，请检查 .env 文件"
+        return
+
+    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+
+    try:
+        response = client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=2048,
+            stream=True,
+        )
+        for chunk in response:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield delta.content
+    except Exception as e:
+        logger.error("DeepSeek 流式 API 调用失败: %s", e)
+        yield f"\n\n抱歉，AI 服务暂时不可用，请稍后重试。（错误信息：{e}）"
