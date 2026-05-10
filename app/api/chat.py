@@ -97,7 +97,7 @@ async def chat_stream(req: ChatRequest):
     流程：rewrite → retrieval → rerank → build_prompt → LLM stream
     RAG 检索链路与同步 /chat 完全一致，仅 LLM 生成阶段改为流式。
     """
-    def event_generator():
+    async def event_generator():
         try:
             for event in rag_chat_stream(req.query, history=req.history):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
@@ -111,7 +111,7 @@ async def chat_stream(req: ChatRequest):
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
+            "X-Accel-Buffering": "no",  # 禁用 nginx 缓冲
         },
     )
 
