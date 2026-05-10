@@ -98,8 +98,12 @@ async def chat_stream(req: ChatRequest):
     RAG 检索链路与同步 /chat 完全一致，仅 LLM 生成阶段改为流式。
     """
     async def event_generator():
-        for event in rag_chat_stream(req.query, history=req.history):
-            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        try:
+            for event in rag_chat_stream(req.query, history=req.history):
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        except Exception:
+            logger.exception("[Stream] rag_chat_stream 异常中断")
+            yield f"data: {json.dumps({'type': 'error', 'content': '流式生成出错，请重试'}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         event_generator(),

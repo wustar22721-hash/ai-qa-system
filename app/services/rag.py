@@ -262,16 +262,21 @@ def rag_chat_stream(query: str, history: list[dict[str, str]] | None = None, top
         {"type": "token", "content": "飞"}       # 逐 token
         {"type": "done", "sources": [...]}       # 流结束 + 来源引用
     """
-    # 步骤 0-3：复用 RAG 检索链路
-    search_query = rewrite_query(query, history=history)
-    candidates = similarity_search_with_metadata(search_query, top_k=top_k * 2)
-    contexts = rerank(search_query, candidates, top_k=top_k)
-    prompt = _build_prompt(query, contexts)
-    sources = _merge_sources(contexts)
+    try:
+        # 步骤 0-3：复用 RAG 检索链路
+        search_query = rewrite_query(query, history=history)
+        candidates = similarity_search_with_metadata(search_query, top_k=top_k * 2)
+        contexts = rerank(search_query, candidates, top_k=top_k)
+        prompt = _build_prompt(query, contexts)
+        sources = _merge_sources(contexts)
 
-    # 步骤 4：流式 LLM 生成
-    for token in generate_answer_stream(prompt):
-        yield {"type": "token", "content": token}
+        # 步骤 4：流式 LLM 生成
+        for token in generate_answer_stream(prompt):
+            yield {"type": "token", "content": token}
 
-    # 步骤 5：返回来源引用
-    yield {"type": "done", "sources": sources}
+        # 步骤 5：返回来源引用
+        yield {"type": "done", "sources": sources}
+
+    except Exception:
+        logger.exception("[RAG Stream] 流式生成异常")
+        yield {"type": "error", "content": "流式生成出错，请重试"}
